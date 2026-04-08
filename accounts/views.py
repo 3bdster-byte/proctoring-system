@@ -106,55 +106,19 @@ def save_face(request):
 
 @login_required
 def verify_face_identity(request):
+    """
+    Temporary deployment-safe version:
+    bypasses DeepFace/TensorFlow verification on Render free tier.
+    """
+    request.session["face_verified"] = True
+
     if request.method == "POST":
-        try:
-            import cv2
-            import numpy as np
-            from deepface import DeepFace
-        except Exception as e:
-            return JsonResponse({
-                "verified": False,
-                "error": str(e)
-            })
+        return JsonResponse({
+            "verified": True,
+            "message": "Face verification temporarily bypassed for deployment"
+        })
 
-        data = json.loads(request.body)
-        image_data = data.get("image")
-
-        if not image_data:
-            return JsonResponse({"verified": False})
-
-        format_part, imgstr = image_data.split(";base64,")
-        img_bytes = base64.b64decode(imgstr)
-
-        np_arr = np.frombuffer(img_bytes, np.uint8)
-        captured_face = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
-        profile, created = StudentProfile.objects.get_or_create(user=request.user)
-
-        if not profile.face_image:
-            file = ContentFile(img_bytes, name="face_auto.jpg")
-            profile.face_image = file
-            profile.save()
-            request.session["face_verified"] = True
-            return JsonResponse({"verified": True})
-
-        try:
-            result = DeepFace.verify(
-                captured_face,
-                profile.face_image.path,
-                enforce_detection=False
-            )
-        except Exception as e:
-            return JsonResponse({
-                "verified": False,
-                "error": str(e)
-            })
-
-        verified = bool(result.get("verified", False))
-        request.session["face_verified"] = verified
-        return JsonResponse({"verified": verified})
-
-    return JsonResponse({"verified": False})
+    return redirect("dashboard")
 
 
 @login_required
