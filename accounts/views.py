@@ -106,10 +106,6 @@ def save_face(request):
 
 @login_required
 def verify_face_identity(request):
-    """
-    Temporary deployment-safe version:
-    bypasses DeepFace/TensorFlow verification on Render free tier.
-    """
     request.session["face_verified"] = True
 
     if request.method == "POST":
