@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Face Verification</title>
+
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+    <h2>Proctoring System</h2>
+    <a href="{% url 'logout' %}" style="color:white; text-decoration:none; font-weight:bold; margin-left:20px;">
+        Logout
+    </a>
+</div>
+
+<!-- CARD UI -->
+<div class="card" style="max-width:500px; margin:auto; text-align:center;">
+
+    <h2>Face Verification</h2>
+    <p>Please look at the camera</p>
+
+    <br>
+
+    <video id="video" width="400" height="300" autoplay muted></video>
+
+    <br><br>
+
+    <p id="status" class="warning">Checking camera...</p>
+
+    <br>
+
+    <button onclick="verifyFace()">Verify Face</button>
+
+</div>
+
+<canvas id="canvas" width="400" height="300" style="display:none;"></canvas>
+
+<script>
+const video = document.getElementById("video");
+const statusText = document.getElementById("status");
+
+let faceCount = 0;
+
+/* START CAMERA */
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(function(stream) {
+    video.srcObject = stream;
+})
+.catch(function() {
+    alert("Camera access denied or not available");
+});
+
+/* FACE DETECTION */
+const faceDetection = new FaceDetection({
+    locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`;
+    }
+});
+
+faceDetection.setOptions({
+    model: "short",
+    minDetectionConfidence: 0.6
+});
+
+faceDetection.onResults(results => {
+    if (!results.detections) {
+        faceCount = 0;
+        statusText.innerText = "No face detected";
+        return;
+    }
+
+    faceCount = results.detections.length;
+
+    if (faceCount == 1) {
+        statusText.innerText = "One face detected";
+    }
+    else if (faceCount > 1) {
+        statusText.innerText = "Multiple faces detected";
+    }
+});
+
+/* CAMERA PIPELINE */
+const camera = new Camera(video, {
+    onFrame: async () => {
+        await faceDetection.send({ image: video });
+    },
+    width: 400,
+    height: 300
+});
+
+camera.start();
+
+/* VERIFY FACE */
+function verifyFace() {
+    if (faceCount == 0) {
+        alert("No face detected. Please face the camera.");
+        return;
+    }
+
+    if (faceCount > 1) {
+        alert("Multiple faces detected. Only one person allowed.");
+        return;
+    }
+
+    /* CAPTURE FRAME */
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    ctx.drawImage(video, 0, 0, 400, 300);
+
+    const image = canvas.toDataURL("image/jpeg");
+
+    /* SEND IMAGE TO DJANGO */
+    fetch("/verify-face-identity/", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": "{{ csrf_token }}"
+        },
+        body: JSON.stringify({
+            image: image
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.verified) {
+            alert("Identity verified successfully");
+            window.location.href = "/dashboard/";
+        } else {
+            alert("Face does not match registered student");
+        }
+    });
+}
+</script>
+
+</body>
+</html>
