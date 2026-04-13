@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Result</title>
+
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+    <h2>Proctoring System</h2>
+</div>
+
+<!-- RESULT CARD -->
+<div class="card" style="max-width:450px; margin:80px auto; text-align:center;">
+
+    <h2>🎉 Exam Submitted Successfully</h2>
+
+    <br>
+
+    <h3>Your Score</h3>
+    <h1 style="color:#58cc02;">{{ score }} / {{ total }}</h1>
+
+    <br><br>
+
+    <a href="{% url 'dashboard' %}">
+        <button>Back to Dashboard</button>
+    </a>
+
+    <br><br>
+
+    <a href="{% url 'logout' %}">
+        <button>Logout</button>
+    </a>
+
+</div>
+
+</body>
+</html>

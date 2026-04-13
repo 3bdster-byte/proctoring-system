@@ -1,0 +1,113 @@
+/* RESET */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* BACKGROUND */
+body {
+    background: #f7f7f7;
+    padding: 20px;
+}
+
+/* HEADINGS */
+h1, h2, h3 {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+/* NAVBAR */
+.navbar {
+    background: #58cc02;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.navbar img {
+    height: 40px;
+}
+
+.navbar a {
+    color: white;
+    text-decoration: none;
+    margin-left: 20px;
+    font-weight: bold;
+}
+
+/* CARD */
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 6px 0 #e5e5e5;
+    margin-bottom: 20px;
+}
+
+/* BUTTON */
+button {
+    background: #58cc02;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #46a302;
+}
+
+button:hover {
+    transform: translateY(-2px);
+}
+
+/* INPUTS */
+input {
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    width: 250px;
+}
+
+/* VIDEO */
+video {
+    border-radius: 10px;
+    border: 2px solid #ddd;
+}
+
+/* GRID */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+/* WARNING TEXT */
+.warning {
+    color: red;
+    font-weight: bold;
+}
+/* POPUP ALERT */
+.popup {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #ff4d4d;
+    color: white;
+    padding: 15px 20px;
+    border-radius: 10px;
+    box-shadow: 0 6px 0 #cc0000;
+    font-weight: bold;
+    z-index: 999;
+    animation: slideIn 0.4s ease;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}

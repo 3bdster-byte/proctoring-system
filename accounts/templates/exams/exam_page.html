@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>{{ exam.title }}</title>
+
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+    <h2>{{ exam.title }}</h2>
+</div>
+
+<!-- TOP GRID -->
+<div class="grid">
+
+    <!-- CAMERA -->
+    <div class="card">
+        <h3>Student Camera</h3>
+        <video id="video" width="320" height="240" autoplay muted></video>
+    </div>
+
+    <!-- WARNINGS -->
+    <div class="card">
+        <h3>Warnings</h3>
+        <p id="warningText" class="warning">Tab Warnings: 0</p>
+        <p id="faceWarning" class="warning">Face Warnings: 0</p>
+        <p id="phoneWarning" class="warning">Phone Warnings: 0</p>
+        <p id="lookWarning" class="warning">Look Away Warnings: 0</p>
+    </div>
+
+    <!-- TIMER -->
+    <div class="card" style="text-align:center;">
+    <h3>Time Left</h3>
+    <h1 id="timer">10:00</h1>
+
+    <div style="background:#ddd; border-radius:10px; overflow:hidden; margin-top:10px;">
+        <div id="progressBar" style="height:10px; width:100%; background:#58cc02;"></div>
+    </div>
+</div>
+</div>
+
+<hr>
+
+<!-- QUESTIONS -->
+<div class="card" style="max-width:800px; margin:auto;">
+
+<form method="post" id="examForm">
+{% csrf_token %}
+
+<input type="hidden" name="tab_warnings" id="tab_input">
+<input type="hidden" name="face_warnings" id="face_input">
+<input type="hidden" name="phone_warnings" id="phone_input">
+
+{% for q in questions %}
+
+<div class="card" style="margin-bottom:15px;">
+    <h3>Question {{ forloop.counter }}</h3>
+    <p>{{ q.question_text }}</p>
+
+    <label><input type="radio" name="{{ q.id }}" value="1"> {{ q.option1 }}</label><br>
+    <label><input type="radio" name="{{ q.id }}" value="2"> {{ q.option2 }}</label><br>
+    <label><input type="radio" name="{{ q.id }}" value="3"> {{ q.option3 }}</label><br>
+    <label><input type="radio" name="{{ q.id }}" value="4"> {{ q.option4 }}</label><br>
+</div>
+
+{% endfor %}
+
+<div style="text-align:center;">
+    <button type="submit">Submit Exam</button>
+</div>
+
+</form>
+
+</div>
+
+<script>
+function showPopup(message){
+
+const popup = document.createElement("div")
+popup.className = "popup"
+popup.innerText = message
+
+document.body.appendChild(popup)
+
+setTimeout(()=>{
+popup.remove()
+},3000)
+
+}
+let tabWarnings = 0
+let faceWarnings = 0
+let phoneWarnings = 0
+let lookWarnings = 0
+
+let noFaceFrames = 0
+let lookFrames = 0
+
+const video = document.getElementById("video")
+
+navigator.mediaDevices.getUserMedia({video:true})
+.then(stream=>{
+video.srcObject = stream
+})
+
+function captureScreenshot(reason){
+
+const canvas = document.createElement("canvas")
+
+canvas.width = video.videoWidth
+canvas.height = video.videoHeight
+
+const ctx = canvas.getContext("2d")
+
+ctx.drawImage(video,0,0)
+
+const image = canvas.toDataURL("image/png")
+
+fetch("/exams/save-screenshot/",{
+method:"POST",
+headers:{
+"Content-Type":"application/json",
+"X-CSRFToken":"{{ csrf_token }}"
+},
+body: JSON.stringify({
+image: image,
+reason: reason,
+exam_id: "{{ exam.id }}"
+})
+})
+
+}
+
+function updateInputs(){
+
+document.getElementById("tab_input").value = tabWarnings
+document.getElementById("face_input").value = faceWarnings
+document.getElementById("phone_input").value = phoneWarnings
+
+}
+
+/* TAB SWITCH */
+
+document.addEventListener("visibilitychange",function(){
+
+if(document.hidden){
+
+tabWarnings++
+
+document.getElementById("warningText").innerText =
+"Tab Warnings: "+tabWarnings
+
+alert("Tab Switching Detected")
+captureScreenshot("Tab Switching")
+
+if(tabWarnings >= 3){
+
+updateInputs()
+document.getElementById("examForm").submit()
+
+}
+
+}
+
+})
+
+/* FACE DETECTION */
+
+const faceMesh = new FaceMesh({
+
+locateFile:(file)=>{
+return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+}
+
+})
+
+faceMesh.setOptions({
+
+maxNumFaces:1,
+refineLandmarks:true,
+minDetectionConfidence:0.5,
+minTrackingConfidence:0.5
+
+})
+
+faceMesh.onResults(results=>{
+
+if(!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0){
+
+noFaceFrames++
+
+if(noFaceFrames > 20){
+
+faceWarnings++
+
+document.getElementById("faceWarning").innerText =
+"Face Warnings: "+faceWarnings
+
+alert("Face Not Detected")
+captureScreenshot("Face Not Detected")
+
+noFaceFrames = 0
+
+}
+
+return
+}
+
+noFaceFrames = 0
+
+const landmarks = results.multiFaceLandmarks[0]
+
+const nose = landmarks[1]
+const left = landmarks[234]
+const right = landmarks[454]
+
+let center = (left.x + right.x)/2
+let diff = nose.x - center
+
+if(Math.abs(diff) > 0.035){
+
+lookFrames++
+
+if(lookFrames > 15){
+
+lookWarnings++
+
+document.getElementById("lookWarning").innerText =
+"Look Away Warnings: "+lookWarnings
+
+alert("Please Look at the Screen")
+captureScreenshot("Looking Away")
+
+lookFrames = 0
+
+}
+
+}else{
+
+lookFrames = 0
+
+}
+
+})
+
+const camera = new Camera(video,{
+onFrame: async ()=>{
+await faceMesh.send({image:video})
+},
+width:320,
+height:240
+})
+
+camera.start()
+
+/* PHONE DETECTION */
+
+let model
+
+async function loadModel(){
+model = await cocoSsd.load({ base:'lite_mobilenet_v2' })
+detectPhone()
+}
+
+loadModel()
+
+function detectPhone(){
+
+setInterval(async function(){
+
+const predictions = await model.detect(video)
+
+let personCount = 0
+
+predictions.forEach(pred=>{
+
+if(pred.class === "cell phone" && pred.score > 0.25){
+
+phoneWarnings++
+
+document.getElementById("phoneWarning").innerText =
+"Phone Warnings: "+phoneWarnings
+
+alert("Mobile Phone Detected")
+captureScreenshot("Phone Detected")
+
+}
+
+if(pred.class === "person" && pred.score > 0.5){
+personCount++
+}
+
+})
+
+if(personCount > 1){
+
+faceWarnings++
+
+document.getElementById("faceWarning").innerText =
+"Face Warnings: "+faceWarnings
+
+alert("Multiple People Detected")
+captureScreenshot("Multiple Persons")
+
+}
+
+},300)
+
+}
+
+/* TIMER */
+let timeLeft = 600
+const totalTime = 600
+
+const timerElement = document.getElementById("timer")
+const progressBar = document.getElementById("progressBar")
+
+const countdown = setInterval(function(){
+
+let minutes = Math.floor(timeLeft/60)
+let seconds = timeLeft % 60
+
+if(seconds < 10){
+seconds = "0"+seconds
+}
+
+timerElement.innerText = minutes + ":" + seconds
+
+/* ✅ PROGRESS BAR UPDATE */
+let progress = (timeLeft / totalTime) * 100
+progressBar.style.width = progress + "%"
+
+timeLeft--
+
+if(timeLeft < 0){
+
+clearInterval(countdown)
+
+updateInputs()
+document.getElementById("examForm").submit()
+
+}
+
+},1000)
+if(timeLeft < 60){
+    progressBar.style.background = "red"
+}
+/* FULLSCREEN */
+
+let fullscreenWarnings = 0
+
+function enterFullscreen(){
+let elem = document.documentElement
+if(elem.requestFullscreen){
+elem.requestFullscreen()
+}
+}
+
+window.onload = function(){
+enterFullscreen()
+}
+
+document.addEventListener("fullscreenchange",function(){
+
+if(!document.fullscreenElement){
+
+fullscreenWarnings++
+
+alert("Fullscreen Exited")
+
+if(fullscreenWarnings >= 3){
+
+updateInputs()
+document.getElementById("examForm").submit()
+
+}
+
+}
+
+})
+
+</script>
+
+</body>
+</html>

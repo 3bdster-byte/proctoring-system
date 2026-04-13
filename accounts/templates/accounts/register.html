@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Register</title>
+
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+    <h2>Proctoring System</h2>
+</div>
+
+<!-- REGISTER CARD -->
+<div class="card" style="max-width:450px; margin:40px auto; text-align:center;">
+
+    <h2>Register</h2>
+
+    <!-- MESSAGES -->
+    {% if messages %}
+        {% for message in messages %}
+            <p class="warning">{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <form method="POST" id="registerForm">
+        {% csrf_token %}
+
+        <input type="text" name="username" placeholder="Username" required>
+        <br><br>
+
+        <input type="email" name="email" placeholder="Email" required>
+        <br><br>
+
+        <input type="password" name="password" placeholder="Password" required>
+        <br><br>
+
+        <h3>Capture Your Face</h3>
+
+        <video id="video" width="320" height="240" autoplay></video>
+
+        <br><br>
+
+        <button type="button" onclick="captureFace()">Capture Face</button>
+
+        <p id="status" class="warning"></p>
+
+        <input type="hidden" id="face_image" name="face_image">
+
+        <br><br>
+
+        <button type="submit">Register</button>
+
+    </form>
+
+    <br>
+
+    <a href="/login/">Already have account? Login</a>
+
+</div>
+
+<canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+
+<script>
+
+const video = document.getElementById("video")
+
+navigator.mediaDevices.getUserMedia({video:true})
+.then(stream=>{
+video.srcObject = stream
+})
+.catch(err=>{
+alert("Camera access denied")
+})
+
+function captureFace(){
+
+const canvas = document.getElementById("canvas")
+const ctx = canvas.getContext("2d")
+
+ctx.drawImage(video,0,0,320,240)
+
+const image = canvas.toDataURL("image/jpeg")
+
+document.getElementById("face_image").value = image
+
+document.getElementById("status").innerText = "Face captured successfully"
+
+}
+
+</script>
+
+</body>
+</html>
